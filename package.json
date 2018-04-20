@@ -1,12 +1,12 @@
 {
   "name": "@twisty_fork/console",
   "version": "1.0.0",
-  "description": "console.* overrides",
+  "description": "console.* overrides for pretty printing objects",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "twisty_fork",
   "license": "UNLICENSED",
   "dependencies": {
     "chalk": "^2.4.0",
