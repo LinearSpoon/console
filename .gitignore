@@ -1,0 +1,6 @@
+*.log
+*.pem
+*.sh
+
+.eslintrc.js
+node_modules
