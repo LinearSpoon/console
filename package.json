@@ -1,6 +1,6 @@
 {
   "name": "@twisty_fork/console",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "console.* overrides for pretty printing objects",
   "main": "index.js",
   "scripts": {
