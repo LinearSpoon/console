@@ -35,3 +35,19 @@ function f()
 
 	console.log(a);
 }
+
+// require('./index.js');
+// let v0 = { id: 0, edges: [], s: 'hello', f: false };
+// let v1 = { id: 1, edges: [], e: new Error('hi') };
+// let v2 = { id: 2, edges: [] };
+
+// v0.edges.push({ src: v0, dst: v1 });
+// v0.edges.push({ src: v0, dst: v2 });
+// v1.edges.push({ src: v1, dst: v0 });
+// v1.edges.push({ src: v1, dst: v2 });
+// v2.edges.push({ src: v2, dst: v0 });
+// v2.edges.push({ src: v2, dst: v1 });
+
+
+// console.log(v0);
+// console.log(v0);

@@ -41,10 +41,14 @@ function map_fmt_args(fmt, args)
 	// Convert the objects with our custom function
 	args = args.map(arg =>
 	{
-		if (typeof arg === 'object' && arg !== null)
-			return object_to_json(arg).string;
-		else
-			return arg;
+		if (typeof arg === 'object')
+		{
+			let a = stringify_object(arg);
+			if (a !== null)
+				return a;
+		}
+		
+		return arg;
 	});
 
 	// Replace object format specifiers
@@ -67,10 +71,14 @@ function map_args(fmt, args)
 
 	args = args.map(arg =>
 	{
-		if (typeof arg === 'object' && arg !== null)
-			return object_to_json(arg).string;
-		else
-			return arg;
+		if (typeof arg === 'object')
+		{
+			let a = stringify_object(arg);
+			if (a !== null)
+				return a;
+		}
+
+		return arg;
 	});
 
 	return m.length > 0 ? [m, ...args] : args;
@@ -136,155 +144,172 @@ console.error = function(...args)
 // 	}
 // }
 
-function to_json(value, format)
+function stringify_object(obj)
+{
+	let parents = [];
+
+	let x = classify(obj, parents);
+	if (x instanceof StringPrinter)
+		return obj; // Print it yourself
+	
+	return x.stringify('\n');
+}
+
+class ObjectPrinter
+{
+	constructor(obj, parents)
+	{
+		parents.push(obj);
+		this.length = 0;
+		this.properties = [];
+
+		for (let i in obj)
+		{
+			if (Object.hasOwnProperty.call(obj, i))
+			{
+				let prop = {
+					key: i,
+					value: classify(obj[i], parents)
+				};
+				this.length += prop.key.length + prop.value.length;
+				this.properties.push(prop);
+			}
+		}
+
+		parents.pop();
+	}
+
+	stringify(indent)
+	{
+		let s = '{';
+		if (this.length < 40)
+		{
+			indent = ' ';
+			s += indent;
+			s += this.properties.map(p => chalk.magenta(p.key) + ': ' + p.value.stringify(indent)).join(', ');
+			s += indent;
+		}
+		else
+		{
+			s += this.properties.map(p => indent + '  ' + chalk.magenta(p.key) + ': ' + p.value.stringify(indent + '  ')).join(',');
+			s += indent;
+		}
+		return s + '}';
+	}
+}
+
+class ArrayPrinter
+{
+	constructor(arr, parents)
+	{
+		parents.push(arr);
+		this.length = 0;
+		this.properties = [];
+
+		for (let i = 0; i < arr.length; i++)
+		{
+			if (Object.hasOwnProperty.call(arr, i))
+			{
+				let value = classify(arr[i], parents);
+				this.length += value.length;
+				this.properties.push(value);
+			}
+		}
+
+		parents.pop();
+	}
+
+	stringify(indent)
+	{
+		let s = '[';
+		if (this.length < 40)
+		{
+			indent = ' ';
+			s += indent;
+			s += this.properties.map(p => p.stringify(indent)).join(', ');
+			s += indent;
+		}
+		else
+		{
+			s += this.properties.map(p => indent + '  ' + p.stringify(indent + '  ')).join(',');
+			s += indent;
+		}
+		return s + ']';
+	}
+}
+
+class StringPrinter
+{
+	constructor(str, len)
+	{
+		this.string = str;
+		this.length = len;
+	}
+
+	stringify(indent)
+	{
+		return this.string;
+	}
+}
+
+// Accepts a value and returns a StringBuilder, ObjectBuilder, or ArrayBuilder based on value's type
+function classify(value, parents)
 {
 	switch (typeof value)
 	{
-		case 'undefined': return { string: chalk.gray('undefined'), length: 9 };
-		case 'number': return { string: chalk.cyan(value), length: value.toString().length };
+		case 'number': return new StringPrinter(chalk.cyan(value), String(value).length);
 		case 'string':
 			value = '\'' + value.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t') + '\'';
-			return { string: chalk.yellow(value), length: value.length };
-		case 'function': return { string: chalk.gray('function'), length: 8 };
+			return new StringPrinter(chalk.yellow(value), value.length);
+		case 'function': return new StringPrinter(chalk.gray('function'), 8);
+		case 'undefined': return new StringPrinter(chalk.gray('undefined'), 9);
 		case 'boolean':
-			value = value.toString();
-			return { string: chalk.red(value), length: value.length };
+			value = String(value);
+			return new StringPrinter(chalk.red(value), value.length);
 		case 'object':
 			if (value === null)
-				return { string: chalk.red('null'), length: 4 };
+				return new StringPrinter(chalk.red('null'), 4);
 			if (value instanceof Promise)
-				return { string: chalk.red('Promise'), length: 7 };
+				return new StringPrinter(chalk.red('Promise'), 7);
 			if (value instanceof Buffer)
-				return { string: chalk.red('Buffer'), length: 6 };
+				return new StringPrinter(chalk.red('Buffer'), 6);
 			if (value instanceof Error)
-				return { string: chalk.red('Error(' + chalk.yellow('\'' + value.message + '\'') + ')'), length: value.message.length + 9 };
+				return new StringPrinter(chalk.red('Error(' + chalk.yellow('\'' + value.message + '\'') + ')'), value.message.length + 9);
 			if (value instanceof Date)
 			{
 				value = value.toJSON();
 				if (value === null)
-					return { string: chalk.red('Invalid date'), length: 12 };
+					return new StringPrinter(chalk.red('Invalid date'), 12);
 				else
-					return { string: chalk.red(value), length: value.length };
+					return new StringPrinter(chalk.red(value), value.length);
 			}
 
 			// Discord.js data structure
 			if (value.constructor && value.constructor.name == 'Collection')
 			{
 				value = 'Collection[' + value.size + ']';
-				return { string: chalk.red(value), length: value.length };
+				return new StringPrinter(chalk.red(value), value.length);
 			}
 
-			return object_to_json(value, format);
+			// Seen it before?
+			let idx = parents.lastIndexOf(value);
+			if (idx > -1)
+			{
+				let value = 'circular[^' + (parents.length-idx-1) + ']';
+				return new StringPrinter(chalk.gray(value), value.length);
+			}
+
+			// Is array?
+			if (Array.isArray(value))
+				return new ArrayPrinter(value, parents);
+			
+			// Is object.
+			return new ObjectPrinter(value, parents);
 
 		default:
-			value = value.toString();
-			return { string: chalk.red(value), color: value.length };
+			value = String(value);
+			return new StringPrinter(chalk.red(value), value.length);
 	}
-}
-
-function object_to_json(object, format)
-{
-	// expanded format will be used if the string exceeds this many characters
-	const always_extended_limit = 90;
-	// short format will be used if the string is less than this many characters
-	const always_short_limit = 30;
-
-	// Tracks parents and current indent level
-	if (!format)
-		format = { parents: [], indent: 2 };
-
-	// Check if we have visited this object already
-	if (format.parents.indexOf(object) != -1)
-		return { string: chalk.gray('circular'), length: 8 };
-
-	format.parents.push(object);
-
-	let string = '';
-	let length = 0;
-
-	if (Array.isArray(object))
-	{
-		// Generate a condensed array string
-		string = '[ ';
-		length = 2;
-		for (let i = 0; i < object.length; i++)
-		{
-			if (Object.hasOwnProperty.call(object, i))
-			{
-				let json = to_json(object[i], format);
-
-				length += json.length + 2;
-				if (format.indent + length > always_extended_limit && length > always_short_limit)
-					break;
-				string += json.string + ', ';
-			}
-		}
-
-		string = string.replace(/,?\s*$/, ' ]');
-	}
-	else
-	{
-		// Generate a condensed object string
-		string = '{ ';
-		length = 2;
-		for (let i in object)
-		{
-			if (Object.hasOwnProperty.call(object, i))
-			{
-				let json = to_json(object[i], format);
-
-				length += i.toString().length + json.length + 4;
-				if (format.indent + length > always_extended_limit && length > always_short_limit)
-					break;
-				string += chalk.magenta(i) + ': ' + json.string + ', ';
-			}
-		}
-
-		string = string.replace(/,?\s*$/, ' }');
-	}
-
-	// Did we stop because the condensed string became too long?
-	if (format.indent + length > always_extended_limit && length > always_short_limit)
-	{
-		let indent = '\n' + ' '.repeat(format.indent);
-		format.indent += 2;
-
-		if (Array.isArray(object))
-		{
-			// Generate an expanded array string
-			string = '[';
-			for (let i = 0; i < object.length; i++)
-			{
-				if (Object.hasOwnProperty.call(object, i))
-				{
-					let json = to_json(object[i], format);
-					string += indent + json.string + ',';
-				}
-			}
-
-			string = string.replace(/,?$/, indent.slice(0, -2) + ']');
-		}
-		else
-		{
-			// Generate an expanded object string
-			string = '{';
-			for (let i in object)
-			{
-				if (Object.hasOwnProperty.call(object, i))
-				{
-					let json = to_json(object[i], format);
-					string += indent + chalk.magenta(i) + ': ' + json.string + ',';
-				}
-			}
-
-			string = string.replace(/,?$/, indent.slice(0, -2) + '}');
-		}
-
-		format.indent -= 2;
-	}
-
-	format.parents.pop();
-	return { string, length };
 }
 
 // Returns caller file and line number
