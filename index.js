@@ -47,7 +47,7 @@ function map_fmt_args(fmt, args)
 			if (a !== null)
 				return a;
 		}
-		
+
 		return arg;
 	});
 
@@ -92,7 +92,7 @@ console.log = function(fmt, ...args)
 		return console.old(...map_args(fmt, args));
 };
 
-console.info = function(...args)
+console.info = function(fmt, ...args)
 {
 	if (typeof fmt === 'string')
 		return console.old(chalk.gray(...map_fmt_args(fmt, args)));
@@ -100,7 +100,7 @@ console.info = function(...args)
 		return console.old(chalk.gray(...map_args(fmt, args)));
 };
 
-console.warn = function(...args)
+console.warn = function(fmt, ...args)
 {
 	if (typeof fmt === 'string')
 		return console.old(chalk.yellow(...map_fmt_args(fmt, args)));
@@ -108,7 +108,7 @@ console.warn = function(...args)
 		return console.old(chalk.yellow(...map_args(fmt, args)));
 };
 
-console.error = function(...args)
+console.error = function(fmt, ...args)
 {
 	if (typeof fmt === 'string')
 		return console.old(chalk.red(...map_fmt_args(fmt, args)));
@@ -151,7 +151,7 @@ function stringify_object(obj)
 	let x = classify(obj, parents);
 	if (x instanceof StringPrinter)
 		return obj; // Print it yourself
-	
+
 	return x.stringify('\n');
 }
 
@@ -295,14 +295,14 @@ function classify(value, parents)
 			let idx = parents.lastIndexOf(value);
 			if (idx > -1)
 			{
-				let value = 'circular[^' + (parents.length-idx-1) + ']';
+				let value = 'circular[^' + (parents.length - idx - 1) + ']';
 				return new StringPrinter(chalk.gray(value), value.length);
 			}
 
 			// Is array?
 			if (Array.isArray(value))
 				return new ArrayPrinter(value, parents);
-			
+
 			// Is object.
 			return new ObjectPrinter(value, parents);
 
