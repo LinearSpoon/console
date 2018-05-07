@@ -41,12 +41,11 @@ function map_fmt_args(fmt, args)
 	// Convert the objects with our custom function
 	args = args.map(arg =>
 	{
+		if (arg === null)
+			return 'null';
+
 		if (typeof arg === 'object')
-		{
-			let a = stringify_object(arg);
-			if (a !== null)
-				return a;
-		}
+			return stringify_object(arg);
 
 		return arg;
 	});
@@ -71,12 +70,11 @@ function map_args(fmt, args)
 
 	args = args.map(arg =>
 	{
+		if (arg === null)
+			return 'null';
+
 		if (typeof arg === 'object')
-		{
-			let a = stringify_object(arg);
-			if (a !== null)
-				return a;
-		}
+			return stringify_object(arg);
 
 		return arg;
 	});
